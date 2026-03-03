@@ -31,7 +31,7 @@ def list_dicom_dirs(dicom_dir: Path, output_dir: Path) -> list:
     dir_list_file = output_dir / 'dicom_dir_list.txt'
     if dir_list_file.exists():
         with open(dir_list_file, 'r') as f:
-            dir_list = [line.rstrip() for line in f]
+            dir_list = [Path(line.rstrip()) for line in f]
         print(f"Using existing list of {len(dir_list)} DICOM directories.")
     else:
         print("Listing DICOM directories (this may take some time).")
@@ -40,7 +40,7 @@ def list_dicom_dirs(dicom_dir: Path, output_dir: Path) -> list:
         with dir_list_file.open('w') as f:
             for d in dicom_dir.glob('**/'):
                 f.write(str(d) + '\n')
-                dir_list.append(str(d))
+                dir_list.append(d)
         toc = timeit.default_timer()
         print(f"Listed {len(dir_list)} DICOM directories in {(toc - tic):.2f} seconds.")
     return dir_list
