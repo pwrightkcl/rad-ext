@@ -18,6 +18,34 @@ from pydicom.errors import InvalidDicomError
 import timeit
 
 
+def list_dicom_dirs(dicom_dir: Path, output_dir: Path) -> list:
+    """List all DICOM directories in a directory and save to a text file.
+
+    Parameters:
+        dicom_dir: Path to directory with subdirectories potentially containing DICOM files.
+        output_dir: Path to directory to save the list of DICOM directories.
+
+    Returns:
+        List of DICOM directories.
+    """
+    dir_list_file = output_dir / 'dicom_dir_list.txt'
+    if dir_list_file.exists():
+        with open(dir_list_file, 'r') as f:
+            dir_list = [line.rstrip() for line in f]
+        print(f"Using existing list of {len(dir_list)} DICOM directories.")
+    else:
+        print("Listing DICOM directories (this may take some time).")
+        tic = timeit.default_timer()
+        dir_list = []
+        with dir_list_file.open('w') as f:
+            for d in dicom_dir.glob('**/'):
+                f.write(str(d) + '\n')
+                dir_list.append(str(d))
+        toc = timeit.default_timer()
+        print(f"Listed {len(dir_list)} DICOM directories in {(toc - tic):.2f} seconds.")
+    return dir_list
+
+
 def main(in_dir, out_dir, fields_file, chunk_size):
     """Read selected tags from the first DICOM file in each subdirectory and save as CSV and parquet.
 
@@ -44,13 +72,9 @@ def main(in_dir, out_dir, fields_file, chunk_size):
                   'SeriesDate', 'SeriesTime', 'SeriesNumber', 'SeriesDescription', 'SeriesInstanceUID']
 
     print(f"Constructing DICOM index from {dicom_dir}.")
-    print("Listing DICOM directories (this may take some time).")
-    tic_list = timeit.default_timer()
-    dicom_dirs = [d for d in dicom_dir.glob('**/')]
-    toc_list = timeit.default_timer()
-    gc.collect()
+
+    dicom_dirs = list_dicom_dirs(dicom_dir, output_dir)
     n_dicom = len(dicom_dirs)
-    print(f"Found {n_dicom} directories in {toc_list - tic_list:.0f} seconds.")
     count_width = len(str(n_dicom))
 
     tic_total = timeit.default_timer()
