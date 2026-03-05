@@ -109,7 +109,7 @@ def main(in_dir, out_dir, fields_file, chunk_size):
                             print(f"Stopping to avoid overwriting data. "
                                   f"Please clean up {output_dir} or use a different out_dir.")
                             exit()
-                count = (chunks_saved - 1) * chunk_size
+                count = chunks_saved * chunk_size
 
     metadata = []
     count_dcm_all = 0
