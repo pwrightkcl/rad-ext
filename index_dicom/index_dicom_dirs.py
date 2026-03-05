@@ -11,6 +11,7 @@ import csv
 from math import floor, ceil
 import gc
 
+from nltk import chunk
 import pandas as pd
 import pydicom
 from pydicom.multival import MultiValue
@@ -91,7 +92,7 @@ def main(in_dir, out_dir, fields_file, chunk_size):
         else:
             chunk_width = len(str(n_chunk))
             # Look for existing saved chunks and try to resume
-            chunks_saved = len([f for f in output_dir.glob('dicom_index_chunk*.parquet')])
+            chunks_saved = len([f for f in output_dir.glob('dicom_index_chunk*.parquet')]) + len([f for f in output_dir.glob('dicom_index_chunk*.pickle')])
             if chunks_saved > 0:
                 if chunks_saved > n_chunk:
                     print(f"Found {chunks_saved} files in {output_dir} matching dicom_index_chunk*.parquet but "
@@ -101,8 +102,10 @@ def main(in_dir, out_dir, fields_file, chunk_size):
                 else:
                     print("Found existing chunk files. Attempting to resume.")
                     for check_chunk in range(1, chunks_saved + 1):
-                        if not (output_dir / f'dicom_index_chunk{check_chunk:0{chunk_width}}.parquet').is_file():
-                            print(f"Found {chunks_saved} files in {output_dir} matching dicom_index_chunk*.parquet but "
+                        this_parquet = output_dir / f'dicom_index_chunk{check_chunk:0{chunk_width}}.parquet'
+                        this_pickle = output_dir / f'dicom_index_chunk{check_chunk:0{chunk_width}}.pickle'
+                        if not this_parquet.is_file() and not this_pickle.is_file():
+                            print(f"Found {chunks_saved} files in {output_dir} matching dicom_index_chunk*.[parquet|pickle] but "
                                   f"could not find dicom_index_chunk{check_chunk:0{chunk_width}}.parquet.")
                             print(f"Stopping to avoid overwriting data. "
                                   f"Please clean up {output_dir} or use a different out_dir.")
