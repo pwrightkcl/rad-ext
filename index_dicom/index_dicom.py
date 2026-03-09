@@ -323,7 +323,7 @@ class DicomIndexer():
 
         if isinstance(value, MultiValue):
             value = list(value)
-        elif value == "" or value is None or pd.isna(value):
+        elif self._is_nullish(value):
             if vm == "1":
                 return my_null
             return []
@@ -340,7 +340,7 @@ class DicomIndexer():
             if len(value) == 0:
                 return my_null
             if len(value) == 1:
-                if value[0] == "" or value[0] is None or pd.isna(value[0]):
+                if self._is_nullish(value[0]):
                     return my_null
                 return value[0]
             return str(value)
@@ -352,7 +352,7 @@ class DicomIndexer():
         t = type(v)
         if t is list:
             return [self._convert_value(mv) for mv in v]
-        if pd.isna(v):
+        if self._is_nullish(v):
             return None
         if t in (int, float):
             return v
@@ -369,6 +369,24 @@ class DicomIndexer():
             s = v.decode('ascii', 'replace')
             return self._sanitise_unicode(s)
         return repr(v)
+
+    @staticmethod
+    def _is_nullish(v: Any) -> bool:
+        """Return True only for scalar null-like values; avoid ambiguous array truth checks."""
+        if v is None:
+            return True
+        if isinstance(v, str):
+            return v == ""
+
+        try:
+            na_value = pd.isna(v)
+        except Exception:
+            return False
+
+        try:
+            return bool(na_value)
+        except (ValueError, TypeError):
+            return False
 
     @staticmethod
     def _sanitise_unicode(s: str) -> str:
