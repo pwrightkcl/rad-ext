@@ -542,77 +542,76 @@ class DicomIndexer():
             final_stem.with_suffix(".pickle"),
         ]
 
-        def _handle_existing_files(existing_files: list[Path]) -> None:
-            if not existing_files:
+        # If chunked, calculate n_chunk and downgrade if chunk_size >= n_dcm.
+        if self.chunked:
+            assert self.chunk_size is not None
+            self.n_chunk = ceil(self.n_dcm / self.chunk_size)
+            if self.n_chunk == 1:
+                self.chunked = False
+                print("Chunk size larger than number of files; processing all files at once.")
+
+        # Handle existing chunk files (only when still chunked).
+        if self.chunked:
+            self.chunk_width = len(str(self.n_chunk - 1))
+            chunk_parquet = sorted(self.output_dir.glob("dicom_index_chunk*.parquet"))
+            chunk_pickle = sorted(self.output_dir.glob("dicom_index_chunk*.pickle"))
+            existing_chunks = chunk_parquet + chunk_pickle
+
+            if self.overwrite and existing_chunks:
+                for file_path in existing_chunks:
+                    file_path.unlink()
+                print(f"Deleted {len(existing_chunks)} existing chunk file(s).")
+                existing_final_outputs = [p for p in final_outputs if p.exists()]
+                if existing_final_outputs:
+                    for file_path in existing_final_outputs:
+                        file_path.unlink()
+                    print(f"Deleted {len(existing_final_outputs)} existing output file(s).")
+                self.chunks_saved = 0
                 return
-            if not self.overwrite:
-                existing_str = ", ".join(str(p.name) for p in existing_files)
+
+            self.chunks_saved = len(existing_chunks)
+
+            if self.chunks_saved > self.n_chunk:
                 raise FileExistsError(
-                    f"Found existing output files in {self.output_dir}: {existing_str}. "
-                    "Use --overwrite to replace them."
-                )
-            for file_path in existing_files:
-                file_path.unlink()
-            print(f"Deleted {len(existing_files)} existing output file(s).")
-
-        if not self.chunked:
-            existing_final_outputs = [p for p in final_outputs if p.exists()]
-            _handle_existing_files(existing_final_outputs)
-            return
-
-        assert self.chunk_size is not None
-        self.n_chunk = ceil(self.n_dcm / self.chunk_size)
-        if self.n_chunk <= 1:
-            self.chunked = False
-            self.chunk_size = None
-            print("Chunk size larger than number of files; processing all files at once.")
-            existing_final_outputs = [p for p in final_outputs if p.exists()]
-            _handle_existing_files(existing_final_outputs)
-            return
-
-        self.chunk_width = len(str(self.n_chunk - 1))
-        chunk_parquet = sorted(self.output_dir.glob("dicom_index_chunk*.parquet"))
-        chunk_pickle = sorted(self.output_dir.glob("dicom_index_chunk*.pickle"))
-        existing_chunks = chunk_parquet + chunk_pickle
-
-        if self.overwrite and existing_chunks:
-            for file_path in existing_chunks:
-                file_path.unlink()
-            print(f"Deleted {len(existing_chunks)} existing chunk file(s).")
-            self.chunks_saved = 0
-            return
-
-        self.chunks_saved = len(existing_chunks)
-        if self.chunks_saved == 0:
-            return
-
-        if self.chunks_saved > self.n_chunk:
-            raise FileExistsError(
-                f"Found {self.chunks_saved} chunk files in {self.output_dir} but expected at most {self.n_chunk}. "
-                "Please clean up the output directory or use --overwrite."
-            )
-
-        for check_chunk in range(self.chunks_saved):
-            chunk_stem = self.output_dir / f"dicom_index_chunk{check_chunk:0{self.chunk_width}}"
-            if not chunk_stem.with_suffix('.parquet').is_file() and not chunk_stem.with_suffix('.pickle').is_file():
-                raise FileNotFoundError(
-                    f"Found {self.chunks_saved} chunk files, but missing expected chunk "
-                    f"{chunk_stem.name}.parquet/.pickle. Please clean up or use --overwrite."
+                    f"Found {self.chunks_saved} chunk files in {self.output_dir} but expected at most {self.n_chunk}. "
+                    "Please clean up the output directory or use --overwrite."
                 )
 
-        if self.chunks_saved == self.n_chunk:
+            for check_chunk in range(self.chunks_saved):
+                chunk_stem = self.output_dir / f"dicom_index_chunk{check_chunk:0{self.chunk_width}}"
+                if not chunk_stem.with_suffix('.parquet').is_file() and not chunk_stem.with_suffix('.pickle').is_file():
+                    raise FileNotFoundError(
+                        f"Found {self.chunks_saved} chunk files, but missing expected chunk "
+                        f"{chunk_stem.name}.parquet/.pickle. Please clean up or use --overwrite."
+                    )
+
+            if self.chunks_saved < self.n_chunk:
+                if self.chunks_saved > 0:
+                    print(f"Found {self.chunks_saved} existing chunk files. Will resume from next chunk.")
+                return
+
+            # All n_chunk chunks are present; proceed to checking final files.
             print(f"Found all {self.chunks_saved} chunk files.")
-            existing_final_outputs = [p for p in final_outputs if p.exists()]
-            if not existing_final_outputs:
-                print("Final outputs not found. Will concatenate chunks.")
-                self.concatenate_chunks()
-                print("Concatenation complete. Exiting.")
-                raise SystemExit(0)
+
+        # Either all chunks are present (chunked) or we are not chunked.
+        # Check the final files.
+        existing_final_outputs = [p for p in final_outputs if p.exists()]
+        if existing_final_outputs:
+            if self.overwrite:
+                for file_path in existing_final_outputs:
+                    file_path.unlink()
+                print(f"Deleted {len(existing_final_outputs)} existing output file(s).")
             else:
                 print(f"Final outputs already exist: {', '.join(p.name for p in existing_final_outputs)}. Nothing to do.")
                 raise SystemExit(0)
-        else:
-            print(f"Found {self.chunks_saved} existing chunk files. Will resume from next chunk.")
+
+        # Final files are absent (or were just deleted).
+        if self.chunked:
+            print("Final outputs not found. Will concatenate chunks.")
+            self.concatenate_chunks()
+            print("Concatenation complete. Exiting.")
+            raise SystemExit(0)
+        # else: begin unchunked run.
 
 
 if __name__ == "__main__":
