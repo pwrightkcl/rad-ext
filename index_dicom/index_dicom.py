@@ -531,39 +531,6 @@ class DicomIndexer():
         self.validate_column_limit(dicom_index, context=f"saving {file_stem.name}")
         dicom_index.to_csv(file_stem.with_suffix('.csv'), index=False, quoting=csv.QUOTE_NONNUMERIC)
 
-        # Sanitize columns for parquet compatibility
-        empty_lists = pd.Series([[]] * len(dicom_index), index=dicom_index.index)
-        for col in dicom_index.columns:
-            try:
-                pa.Array.from_pandas(dicom_index[col])
-            except Exception:
-                if dictionary_has_tag(col):
-                    vr = dictionary_VR(col)
-                    vm = dictionary_VM(col)
-                    if vm == '1':
-                        if vr in ['DS', 'IS', 'FL', 'FD', 'OF', 'SL', 'SS', 'UL', 'US']:
-                            dicom_index[col] = pd.to_numeric(dicom_index[col], errors='coerce')
-                        else:
-                            dicom_index[col] = dicom_index[col].fillna('')
-                            dicom_index[col] = dicom_index[col].astype(str)
-                            dicom_index[col] = dicom_index[col].replace('[]', '')
-                    else:
-                        dicom_index[col] = dicom_index[col].replace('', pd.NA)
-                        dicom_index[col] = dicom_index[col].fillna(empty_lists)
-                        dicom_index[col] = dicom_index[col].apply(lambda x: x if isinstance(x, list) else [x])
-                else:
-                    try_numeric = pd.to_numeric(dicom_index[col], errors='coerce')
-                    if try_numeric.notna().sum() / len(dicom_index) > 0.5:
-                        dicom_index[col] = try_numeric
-                    elif dicom_index[col].apply(lambda x: isinstance(x, list)).sum() > 0.5:
-                        dicom_index[col] = dicom_index[col].replace('', pd.NA)
-                        dicom_index[col] = dicom_index[col].fillna(empty_lists)
-                        dicom_index[col] = dicom_index[col].apply(lambda x: x if isinstance(x, list) else [x])
-                    else:
-                        dicom_index[col] = dicom_index[col].fillna('')
-                        dicom_index[col] = dicom_index[col].astype(str)
-                        dicom_index[col] = dicom_index[col].replace('[]', '')
-
         try:
             dicom_index.to_parquet(file_stem.with_suffix('.parquet'))
         except Exception as e:

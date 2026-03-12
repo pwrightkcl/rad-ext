@@ -26,7 +26,7 @@ Arguments:
 Outputs:
 
 * `dicom_index.csv`
-* `dicom_index.parquet` (or `.pkl` if parquet fails)
+* `dicom_index.parquet` (or `.pickle` if parquet fails)
 
 ### Output data structure
 
