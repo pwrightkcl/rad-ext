@@ -1,7 +1,0 @@
-AccessionNumber
-Modality
-SeriesDescription
-StudyInstanceUID
-SeriesInstanceUID
-StudyID
-SeriesNumber
