@@ -8,7 +8,7 @@ It has two modes:
 
 * Index by file
   * Walks the input directory and indexes every file ending `.dcm`.
-  * This is mostly applicable to DICOM responses returned by C-FIND queries, which typically query a limited number of attributes
+  * This is mostly applicable to DICOM responses returned by C-FIND queries, where a single `.dcm` file can represent a constrained set of attributes at the study and series level.
 * Index by directory
   * Walks the input directory and indexes one `.dcm` file per subdirectory
   * This is mostly applicable to DICOM image files, which we assume are stored in subdirectories containing images from the same series, and we are only interested in attributes at the series level or above.
@@ -18,7 +18,7 @@ Arguments:
 * `--level`: "file" or "dir" for file or directory mode
 * `--input_dir`: root of the directory tree containing DICOM files
 * `--output_dir`: directory where the CSV and parquet files will be saved
-* `--chunk_size` [optional]: save the DataFrame after processing the specified number of files
+* `--chunk_size` [optional]: save a DataFrame each time the specified number of files are processed, then combine DataFrames at the end
 * `--attributes` [optional]: DICOM attributes to index: one or more DICOM keywords, path to text file containing DICOM keywords, or `'*'`; default is a small set of basic attributes.
 * `--overwrite`: if set, overwrite existing output files, otherwise try to resume.
 * `--max_columns`: Maximum number of columns allowed in output tables after flattening DICOM metadata.
@@ -51,7 +51,7 @@ If `--overwrite` is not set, the script will check for existing files and attemp
 
 ### Data normalisation
 
-The script verifies that incoming data conform to the expected DICOM Value Representation (VR) and Value Multiplicity (VM). If the data types vary within a columns, this can raise errors from Pyarrow when attempting to save to Parquet. If saving to parquet fails, the script will save to pickle.
+The script verifies that incoming data conform to the expected DICOM Value Representation (VR) and Value Multiplicity (VM). If the data types vary within a column, this can raise errors from pyarrow when attempting to save to parquet. If saving to parquet fails, the script will save to pickle.
 
 #### Scalar attributes (VM=1)
 
@@ -61,13 +61,13 @@ Scalar attributes are forced to be scalars:
 * For list-like values:
   * Empty lists are treated like empty or missing values
   * For lists of length 1, the first value is used
-  * For longer lists, the value is coerced to string. For numeric columns, this may cause a Pyarrow error, but will avoid data loss and allows introspection of the problematic data in the pickle file.
+  * For longer lists, the value is coerced to string. For numeric columns, this may cause a pyarrow error, but will avoid data loss and allows introspection of the problematic data in the pickle file.
 
 #### Multi-valued attributes (VM > 1)
 
 Multi-valued attributes are coerced to `list`:
 
-* List-like values are cast to `list` because Pyarrow does not recognise the Pydicom `MultiValue` type.
+* List-like values are cast to `list` because pyarrow does not recognise the pydicom `MultiValue` type.
 * Empty scalars are coerced to the empty list `[]`.
 * Scalar strings will be split on the delimiters `\` or `/`.
 * Other scalars will be stored as a singleton list.
