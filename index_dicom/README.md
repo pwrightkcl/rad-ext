@@ -2,24 +2,27 @@
 
 ## Index DICOM metadata
 
-These scripts will read metadata from a directory full of DICOM (`.dcm`) files and collect specified attributes into a Pandas DataFrame, saved as CSV and parquet (or pickle if saving as parquet raises an exception). For DICOM response files returned by `C-FIND` query (e.g. from DCMTK `findscu`) use `index_dicom_files.py` to iterate over every file. For collections of image files, use `index_dicom_dirs.py` to process only the first file in each directory, assuming each directory contains instances from the same series (e.g. slices of a CT can) and you are not interested in attributed that vary between instances.
+This script will read metadata from a directory full of DICOM (`.dcm`) files and collect specified attributes into a Pandas DataFrame, saved as CSV and parquet (or pickle if saving as parquet raises an exception). It has two modes:
+
+* Index by file
+  * Walks the input directory and indexes every file ending `.dcm`.
+  * This is mostly applicable to DICOM responses returned by C-FIND queries, which typically query a limited number of attributes
+* Index by directory
+  * Walks the input directory and indexes one `.dcm` file per subdirectory
+  * This is mostly applicable to DICOM image files, which we assume are stored in subdirectories containing images from the same series, and we are only interested in attributes at the series level or above.
 
 Arguments:
 
-* `--in_dir`: the directory containing DICOM files
-* `--out_dir`: the directory where the CSV and parquet files will be saved
+* `--level`: "file" or "dir" for file or directory mode
+* `--in_dir`: roote of the directory tree containing DICOM files
+* `--out_dir`: directory where the CSV and parquet files will be saved
 * `--chunk_size` [optional]: save the DataFrame after processing the specified number of files
   * This makes it easier to resume if indexing is interrupted.
   * It also avoids the script slowing down as the DataFrame grows.
-* `--fields_file` [optional]: a list of DICOM keywords to index
-  * If left blank:
-    * `index_dicom_files.py` will try to index every field it finds (assuming a query response will not have many fields)
-    * `index_dicom_dirs.py` will default to a small set of generic fields, assuming you are indexing actual image files with thousands of fields  
-  * Examples:
-    * `dicom_fields_files_[study|series|instance].txt`: for query responses at the study, series, and instance level
-    * `dicom_fields_dirs.txt`: for image files containing a mixture of CT and MR modalities
-
-As with [querying PACS](../query_pacs), the scripts are most conveniently run with a bash wrapper. The `index_years.sh` script is a wrapper corresponding to the `query_studies_by_year.sh` script.
-
-> [!NOTE]
-> The latest [query_pacs](../query_pacs/) scripts write results directly to data tables so these scripts are no longer needed for that purpose. They are still useful when dealing with actual images, or queries using DCMTK, which saves responses to .dcm files.
+* `--attributes` [optional]: which DICOM attributes to index, specified as one of:
+  * one or more DICOM keywords
+  * path to a text file containing DICOM keywords
+  * `"*"` to index all available attributes
+  * if unspecified, index a small default set of attributes
+* `--overwrite`: if set, overwrite existing output files / chunks in `output_dir`; in unset, `chunk_size` is set, and an incomplete set of chunks is in `output_dir`, attempt to resume.
+* `--max_columns`: Maximum number of columns allowed in output tables after flattening DICOM metadata.
