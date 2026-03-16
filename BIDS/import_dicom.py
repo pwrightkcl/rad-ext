@@ -27,12 +27,10 @@ def main (input_index: Path, project_dir: Path):
     {project_dir}/sourcedata/dicom/x123456/0001
 
     Creates a new DICOM index `{project_dir}/metadata/dicom_index_imported` (CSV and parquet) containing only the records
-    for the imported DICOM series, with additional columns:
+    for the imported DICOM series, with new columns:
     
-    - import_path: the parent directory of the original DICOM files to be imported (e.g. /path/to/dataset/sourcedata/dicom/x123456/0001)
-    - series_dir: the name of the series directory in the original dataset (e.g. 0001)
-    - study_dir: the name of the study directory in the original dataset (e.g. x123456)
-    - output_path: the path to the directory where the DICOM files will be imported (e.g. {output_root}/x123456/0001)
+    - original_dicom_filepath: the .dcm file indexed in the source dataset, renamed from `dicom_filepath`
+    - dicom_path: the path to the directory where the DICOM files will be imported (e.g. {output_root}/x123456/0001)
     - import_status: whether the directory was imported:
       - "exists": the output directory already exists, so no import needed
       - "to_ln": the output directory does not exist, but the parent directory does, so a symlink will be created

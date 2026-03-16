@@ -35,11 +35,12 @@ def main(project_dir: Path):
     """Create a BIDS-compliant rawdata directory from converted NIfTI+JSON files and DICOM index.
 
     Saves a rawdata index to the metadata directory and generates a shell script to create the rawdata directory
-    and link the NIfTI and JSON files (plus .bval and .bvac, if present).
+    and link the NIfTI and JSON files (plus .bval and .bvec, if present).
 
     Requires a DICOM index from `import_dicom_imported.py` with columns:
-    *   `dicom_path`: the path to the indexed DICOM data
-    *   `suffix`: the BIDS suffix to use for the NIfTI files;
+    - `dicom_path`: the path to the indexed DICOM data
+    - `subject`: the subject ID to use in the BIDS filename
+    - `suffix`: the BIDS suffix to use for the NIfTI files
 
     We assume the source DICOM data are in 'sourcedata/dicom' and the converted NIfTI files are in 'sourcedata/nifti'.
 

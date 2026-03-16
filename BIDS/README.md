@@ -7,13 +7,13 @@ The scripts in this directory start with a DICOM index table created by [index_d
 * `pick_dicom.py`: classify DICOM images using `dicom_heuristics.py` and apply selection criteria for a given project
 * `import_dicom.py`: create a project-specific set of symlinked DICOM images based on the selection above
 * `convert.sh`: a convenience script to convert the imported DICOM images to NIfTI at scale
-* `source2raw.py`: rename the converted NIfTI images according to BIDS
+* `source2raw.py`: create a BIDS-compliant `rawdata` directory
 
 ### Pick DICOM series
 
 The example given in `pick_dicom.py` selects images with MR modality and that match heuristic criteria for T1w, FLAIR, or DWI. This step saved a new DICOM index with the same records as the input index to allow checking of the selections before proceeding to image import.
 
-This step uses the convenience function in `dicom_heuristics.py` to apply heuristics to DICOM attributes to impute BIDS entities. This script includes a default set of heuristics that cover many examples for MR data. This makes assembling a set of heuristics a lot easier. A limitation is that the only work by matching regexes. The pick script includes in example that needs a numeric comparison (`DiffusionBValue > 0`) and creates an interim string column based on this before applying the heuristics.
+This step uses the convenience function in `dicom_heuristics.py` to apply heuristics to DICOM attributes to impute BIDS entities. This script includes a default set of heuristics that cover many examples for MR data. This makes assembling a set of heuristics a lot easier. A limitation is that the only work by matching regexes. The pick script includes an example that needs a numeric comparison (`DiffusionBValue > 0`) and creates an interim string column based on this before applying the heuristics.
 
 ### Import DICOM series
 
@@ -27,4 +27,11 @@ The bash script `convert.sh` generates a script of conversion commands that can 
 
 This pipeline assumes that your DICOM index is anonymised and does not contain the "PatientID" attribute. You must add your own "subject" column to the DICOM index before the final step of converting sourcedata to rawdata. One way to do this would be to map image identifiers in the DICOM index (AccessionNumber or StudyInstanceUID) to your list of pseudonymised IDs, or extracting the pseudonymised ID from the path, if your data are organised that way.
 
-### Convert sourcedata NIfTI filesnames and directories to proper BIDS rawdata organisation
+### Create BIDS-compliant `rawdata` directory
+
+The `source2raw.py` script iterates over the converted NIfTI files, matches them to the imported DICOM index, and creates a BIDS-compliant directory and filename. It saves a rawdata index DataFrame and generates a shell script to create the rawdata directories and symbolic links to sourcedata.
+
+* Handles the "reconstruction" and "contrast enhancement" entities, if already created by the heuristics
+* Maintains unique filenames using the "acquisition" entity to contain the series description
+* Handles volumes split to multiple NIfTI files using the "reconstruction" entity
+* Logs failures to the rawdata index
