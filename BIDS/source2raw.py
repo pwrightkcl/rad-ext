@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import re
 import csv
@@ -11,7 +12,8 @@ from tqdm import tqdm
 def _find_nifti_json_sidecars(nifti_dir: Path) -> list[Path]:
     """Find all JSON sidecar files in the sourcedata nifti directory.
 
-    Check for cached list and load this if present. If not list files and save to cache file.
+    Check for cached list and load this if present. If not, recursively list files with
+    ``os.walk(..., followlinks=True)`` and save the result to a cache file.
 
     Args:
         nifti_dir: Path to the sourcedata nifti directory.
@@ -24,7 +26,13 @@ def _find_nifti_json_sidecars(nifti_dir: Path) -> list[Path]:
         with cache_file.open('r') as f:
             json_files = [Path(line.strip()) for line in f]
     else:
-        json_files = list(nifti_dir.glob('**/*.json'))
+        json_files = []
+        for root, dirs, files in os.walk(nifti_dir, followlinks=True):
+            dirs.sort()
+            files.sort()
+            for file_name in files:
+                if file_name.lower().endswith('.json'):
+                    json_files.append(Path(root) / file_name)
         with cache_file.open('w') as f:
             for json_file in json_files:
                 f.write(str(json_file) + '\n')
@@ -37,10 +45,12 @@ def main(project_dir: Path):
     Saves a rawdata index to the metadata directory and generates a shell script to create the rawdata directory
     and link the NIfTI and JSON files (plus .bval and .bvec, if present).
 
-    Requires a DICOM index from `import_dicom_imported.py` with columns:
+    Requires the DICOM index `{project_dir}/metadata/dicom_index_imported.parquet` from `import_dicom_imported.py` with columns:
     - `dicom_path`: the path to the indexed DICOM data
-    - `subject`: the subject ID to use in the BIDS filename
     - `suffix`: the BIDS suffix to use for the NIfTI files
+    - `subject`: the subject ID to use in the BIDS filename
+
+    The `subject` column must be added manually, since the linkage between image and subject ID is project-specific.
 
     We assume the source DICOM data are in 'sourcedata/dicom' and the converted NIfTI files are in 'sourcedata/nifti'.
 
