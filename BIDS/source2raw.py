@@ -25,7 +25,9 @@ def _find_nifti_json_sidecars(nifti_dir: Path) -> list[Path]:
     if cache_file.is_file():
         with cache_file.open('r') as f:
             json_files = [Path(line.strip()) for line in f]
+        print(f"Loaded list of {len(json_files)} NIfTI JSON sidecar files from cache.")
     else:
+        print(f"Finding NIfTI JSON sidecar files in {nifti_dir} ...")
         json_files = []
         for root, dirs, files in os.walk(nifti_dir, followlinks=True):
             dirs.sort()
@@ -36,6 +38,7 @@ def _find_nifti_json_sidecars(nifti_dir: Path) -> list[Path]:
         with cache_file.open('w') as f:
             for json_file in json_files:
                 f.write(str(json_file) + '\n')
+        print(f"Found {len(json_files)} NIfTI JSON sidecar files and saved list to cache.")
     return json_files
 
 
@@ -72,7 +75,6 @@ def main(project_dir: Path):
     print("Loading DICOM index.")
     di = pd.read_parquet(project_dir / 'metadata' / 'dicom_index_imported.parquet')
 
-    print("Generating commands.")
     commands = project_dir / 'code' / 'sourcedata' / 'generated_scripts' / 'source2raw_commands.sh'
     if not commands.parent.exists():
         commands.parent.mkdir(parents=True)
