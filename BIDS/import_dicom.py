@@ -9,7 +9,7 @@ import pandas as pd
 from tqdm import tqdm
 
 
-def main (input_index: Path, project_dir: Path):
+def main (project_dir: Path):
     """Import selected DICOM series from a main dataset into a BIDS project directory.
 
     Creates symlinks to the original DICOM files in a directory structure matching the study and series
@@ -25,6 +25,8 @@ def main (input_index: Path, project_dir: Path):
 
     Then the `output_path` column will be set to:
     {project_dir}/sourcedata/dicom/x123456/0001
+
+    Reads from the DICOM index from `pick_dicom.py` at `{project_dir}/metadata/dicom_index_picks.parquet`.
 
     Creates a new DICOM index `{project_dir}/metadata/dicom_index_imported` (CSV and parquet) containing only the records
     for the imported DICOM series, with new columns:
@@ -42,6 +44,7 @@ def main (input_index: Path, project_dir: Path):
         input_index: Path to the input DICOM index file (parquet format); must have columns `dicom_filepath` and `valid`.
         project_dir: Root directory for the BIDS project.
     """
+    input_index = project_dir / 'metadata' / 'dicom_index_picks.parquet'
     di = pd.read_parquet(input_index)
     di = di.query('valid').copy()
     print(f"Processing {di.shape[0]} records from {input_index}.")
@@ -104,7 +107,6 @@ def main (input_index: Path, project_dir: Path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Import selected DICOM series from a main dataset into a project-specific directory.")
-    parser.add_argument("input_index", type=Path, help="Path to the input DICOM index file (parquet format).")
     parser.add_argument("project_dir", type=Path, help="Root directory for the BIDS project.")
     args = parser.parse_args()
-    main(args.input_index, args.project_dir)
+    main(args.project_dir)
